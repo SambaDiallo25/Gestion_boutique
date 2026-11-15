@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { telechargerFacture } from "../../lib/facture";
 import { supabase } from "../../lib/supabase";
+import { telechargerFacture } from "../../lib/facture";
+import { envoyerParWhatsApp } from "../../lib/whatsapp";
+import type { DonneesFacture } from "../components/FactureDocument";
 
 type LigneVente = {
   id: number;
@@ -64,25 +66,25 @@ export default function PageHistorique() {
     charger();
   }, []);
 
+  function donneesFacture(v: Vente): DonneesFacture {
+    return {
+      boutique: nomBoutique,
+      numero: v.id,
+      client: v.client_nom,
+      date: dateHeure(v.created_at),
+      total: v.total,
+      lignes: v.lignes_vente.map((l) => ({
+        nom: l.article_nom,
+        prix: l.prix,
+        quantite: l.quantite,
+      })),
+    };
+  }
+
   async function telecharger(v: Vente) {
     setGeneration(v.id);
     try {
-      await telechargerFacture({
-        boutique: nomBoutique,
-        numero: v.id,
-        client: v.client_nom,
-        date: new Date(v.created_at).toLocaleString("fr-FR", {
-          dateStyle: "short",
-          timeStyle: "short",
-        }),
-
-        total: v.total,
-        lignes: v.lignes_vente.map((l) => ({
-          nom: l.article_nom,
-          prix: l.prix,
-          quantite: l.quantite,
-        })),
-      });
+      await telechargerFacture(donneesFacture(v));
     } catch {
       setErreur("Impossible de générer la facture.");
     } finally {
@@ -142,6 +144,12 @@ export default function PageHistorique() {
                 disabled={generation === v.id}
               >
                 {generation === v.id ? "Génération..." : "Facture PDF"}
+              </button>
+              <button
+                className="bg-emerald-600 text-white rounded px-3 py-1"
+                onClick={() => envoyerParWhatsApp(donneesFacture(v))}
+              >
+                WhatsApp
               </button>
             </div>
           </div>

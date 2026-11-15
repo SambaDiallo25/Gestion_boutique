@@ -6,7 +6,7 @@ import CarteArticle from "../components/CarteArticle";
 import FormulaireArticle from "../components/FormulaireArticle";
 import Panier, { type LignePanier } from "../components/Panier";
 import type { DonneesFacture } from "../components/FactureDocument";
-
+import { envoyerParWhatsApp } from "../../lib/whatsapp";
 type Article = { id: number; nom: string; prix: number; stock: number };
 
 export default function PageVentes() {
@@ -192,13 +192,21 @@ export default function PageVentes() {
         <div className="mb-4 flex flex-wrap items-center gap-4">
           <p className="text-green-600 font-bold">{message}</p>
           {derniereVente && (
-            <button
-              className="bg-black text-white rounded px-3 py-2"
-              onClick={telechargerFacture}
-              disabled={generation}
-            >
-              {generation ? "Génération..." : "Télécharger la facture PDF"}
-            </button>
+            <>
+              <button
+                className="bg-black text-white rounded px-3 py-2"
+                onClick={telechargerFacture}
+                disabled={generation}
+              >
+                {generation ? "Génération..." : "Télécharger la facture PDF"}
+              </button>
+              <button
+                className="bg-emerald-600 text-white rounded px-3 py-2"
+                onClick={() => envoyerParWhatsApp(derniereVente)}
+              >
+                Envoyer par WhatsApp
+              </button>
+            </>
           )}
         </div>
       )}

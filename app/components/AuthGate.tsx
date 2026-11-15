@@ -33,7 +33,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [pret, session, pathname, router]);
 
-  if (!pret) return <p className="p-8 text-slate-500">Chargement...</p>;
+  if (!pret) return <p className="p-4 md:p-8 text-slate-500">Chargement...</p>;
   if (pathname === "/connexion") return <>{children}</>;
   if (!session) return null;
 

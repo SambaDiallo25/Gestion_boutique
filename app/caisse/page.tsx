@@ -108,8 +108,8 @@ export default function PageCaisse() {
   const solde = totalEntrees - totalSorties;
 
   return (
-    <main className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <main className="p-4 md:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold">Caisse</h1>
         <label className="flex items-center gap-2">
           Jour :
@@ -125,16 +125,16 @@ export default function PageCaisse() {
       {erreur && <p className="text-red-500 mb-4">Erreur : {erreur}</p>}
       {chargement && <p className="text-gray-500 mb-4">Chargement...</p>}
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="card">
           <p className="text-sm text-gray-500">Entrées</p>
-          <p className="text-2xl font-bold text-green-600">
+          <p className="text-base sm:text-xl lg:text-2xl font-bold text-green-600">
             {format(totalEntrees)}
           </p>
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Sorties</p>
-          <p className="text-2xl font-bold text-red-500">
+          <p className="text-base sm:text-xl lg:text-2xl font-bold text-red-500">
             {format(totalSorties)}
           </p>
         </div>
@@ -143,8 +143,8 @@ export default function PageCaisse() {
           <p
             className={
               solde < 0
-                ? "text-2xl font-bold text-red-500"
-                : "text-2xl font-bold"
+                ? "text-base sm:text-xl lg:text-2xl font-bold text-red-500"
+                : "text-base sm:text-xl lg:text-2xl font-bold"
             }
           >
             {format(solde)}
@@ -154,7 +154,7 @@ export default function PageCaisse() {
 
       <div className="card mb-8">
         <h2 className="font-bold mb-2">Nouvelle dépense</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             className="border rounded p-2 flex-1"
             placeholder="Ex : Transport, achat de stock..."
@@ -177,7 +177,7 @@ export default function PageCaisse() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <h2 className="font-bold mb-2">Ventes du jour ({ventes.length})</h2>
           {ventes.length === 0 && (

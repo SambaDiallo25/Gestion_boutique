@@ -133,7 +133,7 @@ export default function PageArticles() {
   const nbStockBas = articles.filter((a) => a.stock < SEUIL_STOCK_BAS).length;
 
   return (
-    <main className="p-8">
+    <main className="p-4 md:p-8">
       <h1 className="text-2xl font-bold mb-4">Articles</h1>
 
       {nbStockBas > 0 && (
@@ -146,7 +146,7 @@ export default function PageArticles() {
 
       <div className="card mb-6">
         <h2 className="font-bold mb-2">Nouvel article</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             className="border rounded p-2 flex-1"
             placeholder="Nom"
@@ -188,7 +188,7 @@ export default function PageArticles() {
         <p className="text-gray-500">Aucun article trouvé.</p>
       )}
 
-      <table className="w-full text-left">
+      <div className="overflow-x-auto"><table className="w-full text-left min-w-[560px]">
         <thead>
           <tr className="border-b text-sm text-gray-500">
             <th className="py-2">Nom</th>
@@ -271,7 +271,7 @@ export default function PageArticles() {
             ),
           )}
         </tbody>
-      </table>
+      </table></div>
     </main>
   );
 }

@@ -185,11 +185,11 @@ export default function PageVentes() {
   }
 
   return (
-    <main className="p-8">
+    <main className="p-4 md:p-8">
       <FormulaireArticle onAjouter={ajouterArticle} />
 
       {message && (
-        <div className="mb-4 flex items-center gap-4">
+        <div className="mb-4 flex flex-wrap items-center gap-4">
           <p className="text-green-600 font-bold">{message}</p>
           {derniereVente && (
             <button
@@ -207,8 +207,8 @@ export default function PageVentes() {
         <p className="text-gray-500 mb-4">Chargement des articles...</p>
       )}
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 grid grid-cols-2 gap-4 content-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start">
           {articles.map((a) => (
             <CarteArticle
               key={a.id}

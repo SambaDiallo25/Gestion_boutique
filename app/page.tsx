@@ -126,8 +126,8 @@ export default function Accueil() {
   });
 
   return (
-    <main className="p-8">
-      <div className="flex items-baseline justify-between mb-6">
+    <main className="p-4 md:p-8">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-6">
         <h1 className="text-2xl font-bold">Tableau de bord</h1>
         <p className="text-gray-500 capitalize">{dateDuJour}</p>
       </div>
@@ -135,20 +135,20 @@ export default function Accueil() {
       {erreur && <p className="text-red-500 mb-4">Erreur : {erreur}</p>}
       {chargement && <p className="text-gray-500 mb-4">Chargement...</p>}
 
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="card">
           <p className="text-sm text-gray-500">Ventes du jour</p>
-          <p className="text-2xl font-bold text-green-600">{format(caJour)}</p>
+          <p className="text-base sm:text-xl lg:text-2xl font-bold text-green-600">{format(caJour)}</p>
           <p className="text-xs text-gray-500">Hier : {format(caHier)}</p>
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Nombre de ventes</p>
-          <p className="text-2xl font-bold">{ventesJour.length}</p>
+          <p className="text-base sm:text-xl lg:text-2xl font-bold">{ventesJour.length}</p>
           <p className="text-xs text-gray-500">Aujourdhui</p>
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Dépenses du jour</p>
-          <p className="text-2xl font-bold text-red-500">
+          <p className="text-base sm:text-xl lg:text-2xl font-bold text-red-500">
             {format(depensesJour)}
           </p>
         </div>
@@ -157,8 +157,8 @@ export default function Accueil() {
           <p
             className={
               soldeJour < 0
-                ? "text-2xl font-bold text-red-500"
-                : "text-2xl font-bold"
+                ? "text-base sm:text-xl lg:text-2xl font-bold text-red-500"
+                : "text-base sm:text-xl lg:text-2xl font-bold"
             }
           >
             {format(soldeJour)}
@@ -166,9 +166,9 @@ export default function Accueil() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 card">
-          <div className="flex items-baseline justify-between mb-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 card">
+          <div className="flex flex-wrap items-baseline justify-between gap-1 mb-2">
             <h2 className="font-bold">Ventes des 7 derniers jours</h2>
             <p className="text-sm text-gray-500">Total : {format(ca7Jours)}</p>
           </div>
@@ -177,8 +177,8 @@ export default function Accueil() {
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="jour" />
               <YAxis
-                width={95}
-                tickFormatter={(n: number) => n.toLocaleString("fr-FR")}
+                width={50}
+                tickFormatter={(n: number) => (n >= 1000 ? Math.round(n / 1000) + "k" : String(n))}
               />
               <Tooltip formatter={(valeur) => format(Number(valeur))} />
               <Bar
@@ -216,7 +216,7 @@ export default function Accueil() {
       </div>
 
       <div className="card mt-6">
-        <div className="flex items-baseline justify-between mb-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-1 mb-3">
           <h2 className="font-bold">Stock bas ({stockBas.length})</h2>
           <Link href="/articles" className="text-sm underline">
             Gérer les articles

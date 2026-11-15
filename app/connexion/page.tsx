@@ -73,7 +73,7 @@ export default function PageConnexion() {
 
   return (
     <main className="min-h-screen flex items-center justify-center p-8">
-      <div className="border rounded-lg p-6 shadow w-full max-w-sm">
+      <div className="card w-full max-w-sm">
         <h1 className="text-2xl font-bold mb-4">
           {mode === "connexion" ? "Connexion" : "Créer ma boutique"}
         </h1>

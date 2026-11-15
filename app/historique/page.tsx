@@ -98,10 +98,10 @@ export default function PageHistorique() {
   const totalAffiche = affichees.reduce((somme, v) => somme + v.total, 0);
 
   return (
-    <main className="p-8">
+    <main className="p-4 md:p-8">
       <h1 className="text-2xl font-bold mb-4">Historique des ventes</h1>
 
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex flex-wrap items-center gap-4 mb-4">
         <input
           className="border rounded p-2 w-full max-w-sm"
           placeholder="Rechercher par client ou n° de vente..."
@@ -121,14 +121,14 @@ export default function PageHistorique() {
 
       {affichees.map((v) => (
         <div key={v.id} className="card mb-3">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-bold">
                 Vente n°{v.id} · {v.client_nom}
               </p>
               <p className="text-sm text-gray-500">{dateHeure(v.created_at)}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <p className="font-bold">{format(v.total)}</p>
               <button
                 className="border rounded px-3 py-1"

@@ -89,27 +89,27 @@ export default function PageClients() {
     ventes.length > 0 ? Math.round(chiffreAffaires / ventes.length) : 0;
 
   return (
-    <main className="p-8">
+    <main className="p-4 md:p-8">
       <h1 className="text-2xl font-bold mb-4">Clients</h1>
 
       {erreur && <p className="text-red-500 mb-4">Erreur : {erreur}</p>}
       {chargement && <p className="text-gray-500 mb-4">Chargement...</p>}
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="card">
           <p className="text-sm text-gray-500">Clients</p>
-          <p className="text-2xl font-bold">{clients.length}</p>
+          <p className="text-base sm:text-xl lg:text-2xl font-bold">{clients.length}</p>
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Meilleur client</p>
-          <p className="text-2xl font-bold">{meilleur ? meilleur.nom : "-"}</p>
+          <p className="text-base sm:text-xl lg:text-2xl font-bold">{meilleur ? meilleur.nom : "-"}</p>
           {meilleur && (
             <p className="text-sm text-gray-500">{format(meilleur.total)}</p>
           )}
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Panier moyen</p>
-          <p className="text-2xl font-bold">{format(panierMoyen)}</p>
+          <p className="text-base sm:text-xl lg:text-2xl font-bold">{format(panierMoyen)}</p>
         </div>
       </div>
 
@@ -126,7 +126,7 @@ export default function PageClients() {
 
       {affiches.map((c, index) => (
         <div key={c.cle} className="card mb-3">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-bold">
                 {index + 1}. {c.nom}{" "}
@@ -144,7 +144,7 @@ export default function PageClients() {
                 })}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <p className="font-bold">{format(c.total)}</p>
               <button
                 className="border rounded px-3 py-1"

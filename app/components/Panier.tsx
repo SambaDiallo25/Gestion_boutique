@@ -14,8 +14,25 @@ export type LignePanier = {
 type Props = {
   lignes: LignePanier[];
   onChangerQuantite: (nom: string, delta: number) => void;
-  onValider: (client: string, total: number, mode: ModePaiement) => void;
+  onValider: (
+    client: string,
+    total: number,
+    mode: ModePaiement,
+    montantPaye: number,
+  ) => void;
 };
+
+function format(n: number) {
+  return n.toLocaleString("fr-FR") + " FCFA";
+}
+
+function classeChoix(actif: boolean) {
+  return `rounded-lg border px-1 py-2 text-xs sm:text-sm font-medium ${
+    actif
+      ? "bg-emerald-600 text-white border-emerald-600"
+      : "bg-white text-slate-700 hover:bg-slate-50"
+  }`;
+}
 
 export default function Panier({
   lignes,
@@ -24,9 +41,13 @@ export default function Panier({
 }: Props) {
   const [client, setClient] = useState("");
   const [mode, setMode] = useState<ModePaiement>("especes");
+  const [credit, setCredit] = useState(false);
+  const [verse, setVerse] = useState("");
   const [erreur, setErreur] = useState("");
 
   const total = lignes.reduce((somme, l) => somme + l.prix * l.quantite, 0);
+  const montantPaye = credit ? Math.floor(Number(verse) || 0) : total;
+  const reste = total - montantPaye;
 
   function valider() {
     if (lignes.length === 0) {
@@ -37,9 +58,15 @@ export default function Panier({
       setErreur("Entre le nom du client.");
       return;
     }
-    onValider(client.trim(), total, mode);
+    if (credit && (montantPaye < 0 || montantPaye > total)) {
+      setErreur(`Le montant versé doit être entre 0 et ${total} FCFA.`);
+      return;
+    }
+    onValider(client.trim(), total, mode, montantPaye);
     setClient("");
     setMode("especes");
+    setCredit(false);
+    setVerse("");
     setErreur("");
   }
 
@@ -60,14 +87,14 @@ export default function Panier({
           <button
             className="border rounded w-8 h-8"
             onClick={() => onChangerQuantite(l.nom, -1)}
-            disabled={l.quantite >= l.stock}
           >
-            -
+            −
           </button>
           <span className="w-6 text-center">{l.quantite}</span>
           <button
             className="border rounded w-8 h-8"
             onClick={() => onChangerQuantite(l.nom, 1)}
+            disabled={l.quantite >= l.stock}
           >
             +
           </button>
@@ -78,23 +105,60 @@ export default function Panier({
         Total : {total} FCFA
       </p>
 
-      <p className="text-sm text-gray-500 mt-3 mb-1">Mode de paiement</p>
-      <div className="grid grid-cols-3 gap-2">
-        {MODES_PAIEMENT.map((m) => (
-          <button
-            key={m.valeur}
-            type="button"
-            className={`rounded-lg border px-1 py-2 text-xs sm:text-sm font-medium ${
-              mode === m.valeur
-                ? "bg-emerald-600 text-white border-emerald-600"
-                : "bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-            onClick={() => setMode(m.valeur)}
-          >
-            {m.label}
-          </button>
-        ))}
+      <p className="text-sm text-gray-500 mt-3 mb-1">Paiement</p>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className={classeChoix(!credit)}
+          onClick={() => setCredit(false)}
+        >
+          Payé en totalité
+        </button>
+        <button
+          type="button"
+          className={classeChoix(credit)}
+          onClick={() => setCredit(true)}
+        >
+          Crédit / partiel
+        </button>
       </div>
+
+      {credit && (
+        <div className="mt-2">
+          <input
+            className="border rounded p-2 w-full"
+            type="number"
+            placeholder="Montant versé (0 si rien)"
+            value={verse}
+            onChange={(e) => setVerse(e.target.value)}
+          />
+          <p
+            className={`text-sm mt-1 ${
+              reste > 0 ? "text-orange-600 font-medium" : "text-slate-500"
+            }`}
+          >
+            Reste à payer : {format(Math.max(0, reste))}
+          </p>
+        </div>
+      )}
+
+      {montantPaye > 0 && (
+        <>
+          <p className="text-sm text-gray-500 mt-3 mb-1">Mode de paiement</p>
+          <div className="grid grid-cols-3 gap-2">
+            {MODES_PAIEMENT.map((m) => (
+              <button
+                key={m.valeur}
+                type="button"
+                className={classeChoix(mode === m.valeur)}
+                onClick={() => setMode(m.valeur)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <input
         className="border rounded p-2 w-full mt-3"

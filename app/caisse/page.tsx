@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { MODES_PAIEMENT, infoMode } from "../../lib/paiements";
 
-type Vente = {
+type Paiement = {
   id: number;
-  client_nom: string;
-  total: number;
-  created_at: string;
+  vente_id: number;
+  montant: number;
   mode_paiement: string;
+  created_at: string;
+  ventes: { client_nom: string } | null;
 };
 type Depense = {
   id: number;
@@ -33,7 +34,7 @@ export default function PageCaisse() {
   const aujourdhui = new Date().toLocaleDateString("sv-SE");
 
   const [jour, setJour] = useState(aujourdhui);
-  const [ventes, setVentes] = useState<Vente[]>([]);
+  const [paiements, setPaiements] = useState<Paiement[]>([]);
   const [depenses, setDepenses] = useState<Depense[]>([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
@@ -46,10 +47,10 @@ export default function PageCaisse() {
       const fin = new Date(debut);
       fin.setDate(fin.getDate() + 1);
 
-      const [rv, rd] = await Promise.all([
+      const [rp, rd] = await Promise.all([
         supabase
-          .from("ventes")
-          .select("*")
+          .from("paiements")
+          .select("*, ventes(client_nom)")
           .gte("created_at", debut.toISOString())
           .lt("created_at", fin.toISOString())
           .order("created_at", { ascending: false }),
@@ -61,12 +62,12 @@ export default function PageCaisse() {
           .order("created_at", { ascending: false }),
       ]);
 
-      const erreurBase = rv.error ?? rd.error;
+      const erreurBase = rp.error ?? rd.error;
       if (erreurBase) {
         setErreur(erreurBase.message);
       } else {
         setErreur("");
-        setVentes(rv.data ?? []);
+        setPaiements(rp.data ?? []);
         setDepenses(rd.data ?? []);
       }
       setChargement(false);
@@ -105,14 +106,14 @@ export default function PageCaisse() {
     setErreur("");
   }
 
-  const totalEntrees = ventes.reduce((somme, v) => somme + v.total, 0);
+  const totalEntrees = paiements.reduce((somme, p) => somme + p.montant, 0);
   const totalSorties = depenses.reduce((somme, d) => somme + d.montant, 0);
   const solde = totalEntrees - totalSorties;
 
   const parMode = MODES_PAIEMENT.map((m) => {
-    const total = ventes
-      .filter((v) => v.mode_paiement === m.valeur)
-      .reduce((somme, v) => somme + v.total, 0);
+    const total = paiements
+      .filter((p) => p.mode_paiement === m.valeur)
+      .reduce((somme, p) => somme + p.montant, 0);
     const pourcentage =
       totalEntrees > 0 ? Math.round((total / totalEntrees) * 100) : 0;
     return { ...m, total, pourcentage };
@@ -140,7 +141,7 @@ export default function PageCaisse() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="card">
-          <p className="text-sm text-gray-500">Entrées</p>
+          <p className="text-sm text-gray-500">Encaissé</p>
           <p className="text-base sm:text-xl lg:text-2xl font-bold text-green-600">
             {format(totalEntrees)}
           </p>
@@ -165,7 +166,7 @@ export default function PageCaisse() {
         </div>
       </div>
 
-      <h2 className="font-bold mb-2">Entrées par mode de paiement</h2>
+      <h2 className="font-bold mb-2">Encaissements par mode de paiement</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
         {parMode.map((m) => (
           <div key={m.valeur} className="card">
@@ -231,28 +232,32 @@ export default function PageCaisse() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h2 className="font-bold mb-2">Ventes du jour ({ventes.length})</h2>
-          {ventes.length === 0 && (
-            <p className="text-gray-500 text-sm">Aucune vente ce jour-là.</p>
+          <h2 className="font-bold mb-2">
+            Encaissements du jour ({paiements.length})
+          </h2>
+          {paiements.length === 0 && (
+            <p className="text-gray-500 text-sm">
+              Aucun encaissement ce jour-là.
+            </p>
           )}
-          {ventes.map((v) => (
+          {paiements.map((p) => (
             <div
-              key={v.id}
+              key={p.id}
               className="flex justify-between gap-2 border-b py-2"
             >
               <span>
-                #{v.id} · {v.client_nom}{" "}
+                #{p.vente_id} · {p.ventes?.client_nom ?? "Client"}{" "}
                 <span className="text-sm text-gray-500">
-                  {heure(v.created_at)}
+                  {heure(p.created_at)}
                 </span>{" "}
                 <span
-                  className={`text-xs rounded px-2 py-1 ${infoMode(v.mode_paiement).badge}`}
+                  className={`text-xs rounded px-2 py-1 ${infoMode(p.mode_paiement).badge}`}
                 >
-                  {infoMode(v.mode_paiement).label}
+                  {infoMode(p.mode_paiement).label}
                 </span>
               </span>
               <span className="text-green-600 whitespace-nowrap">
-                + {format(v.total)}
+                + {format(p.montant)}
               </span>
             </div>
           ))}

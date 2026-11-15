@@ -121,6 +121,7 @@ export default function PageVentes() {
     client: string,
     total: number,
     mode: ModePaiement,
+    montantPaye: number,
   ) {
     setErreurBase("");
     setAlerte("");
@@ -185,7 +186,23 @@ export default function PageVentes() {
       return;
     }
 
-    // 3. Diminuer le stock à partir du stock réel
+    // 3. Enregistrer le paiement (s'il y a eu un versement)
+    if (montantPaye > 0) {
+      const { error: errPaiement } = await supabase
+        .from("paiements")
+        .insert({
+          vente_id: vente.id,
+          montant: montantPaye,
+          mode_paiement: mode,
+        });
+
+      if (errPaiement) {
+        setErreurBase(errPaiement.message);
+        return;
+      }
+    }
+
+    // 4. Diminuer le stock à partir du stock réel
     for (const l of panier) {
       const reel = stocks.find((s) => s.id === l.articleId);
       if (!reel) continue;
@@ -207,6 +224,8 @@ export default function PageVentes() {
       }),
     );
 
+    const reste = total - montantPaye;
+
     setDerniereVente({
       boutique: nomBoutique,
       numero: vente.id,
@@ -216,7 +235,12 @@ export default function PageVentes() {
         timeStyle: "short",
       }),
       total,
-      modePaiement: infoMode(mode).label,
+      modePaiement:
+        montantPaye === 0
+          ? "Non payé (crédit)"
+          : reste > 0
+            ? `${infoMode(mode).label} (acompte ${montantPaye} FCFA, reste ${reste} FCFA)`
+            : infoMode(mode).label,
       lignes: panier.map((l) => ({
         nom: l.nom,
         prix: l.prix,
@@ -224,7 +248,10 @@ export default function PageVentes() {
       })),
     });
     setMessage(
-      `Vente n°${vente.id} enregistrée pour ${client} : ${total} FCFA (${infoMode(mode).label})`,
+      `Vente n°${vente.id} enregistrée pour ${client} : ${total} FCFA` +
+        (reste > 0
+          ? ` — reste à payer : ${reste} FCFA`
+          : ` (${infoMode(mode).label})`),
     );
     setPanier([]);
   }

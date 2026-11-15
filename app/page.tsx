@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -136,23 +136,23 @@ export default function Accueil() {
       {chargement && <p className="text-gray-500 mb-4">Chargement...</p>}
 
       <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <p className="text-sm text-gray-500">Ventes du jour</p>
           <p className="text-2xl font-bold text-green-600">{format(caJour)}</p>
           <p className="text-xs text-gray-500">Hier : {format(caHier)}</p>
         </div>
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <p className="text-sm text-gray-500">Nombre de ventes</p>
           <p className="text-2xl font-bold">{ventesJour.length}</p>
           <p className="text-xs text-gray-500">Aujourdhui</p>
         </div>
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <p className="text-sm text-gray-500">Dépenses du jour</p>
           <p className="text-2xl font-bold text-red-500">
             {format(depensesJour)}
           </p>
         </div>
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <p className="text-sm text-gray-500">Solde du jour</p>
           <p
             className={
@@ -167,7 +167,7 @@ export default function Accueil() {
       </div>
 
       <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 border rounded-lg p-4 shadow">
+        <div className="col-span-2 card">
           <div className="flex items-baseline justify-between mb-2">
             <h2 className="font-bold">Ventes des 7 derniers jours</h2>
             <p className="text-sm text-gray-500">Total : {format(ca7Jours)}</p>
@@ -177,7 +177,7 @@ export default function Accueil() {
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="jour" />
               <YAxis
-                width={70}
+                width={95}
                 tickFormatter={(n: number) => n.toLocaleString("fr-FR")}
               />
               <Tooltip formatter={(valeur) => format(Number(valeur))} />
@@ -191,7 +191,7 @@ export default function Accueil() {
           </ResponsiveContainer>
         </div>
 
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <h2 className="font-bold mb-3">Articles les plus vendus</h2>
           {topArticles.length === 0 && (
             <p className="text-sm text-gray-500">
@@ -215,7 +215,7 @@ export default function Accueil() {
         </div>
       </div>
 
-      <div className="border rounded-lg p-4 shadow mt-6">
+      <div className="card mt-6">
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-bold">Stock bas ({stockBas.length})</h2>
           <Link href="/articles" className="text-sm underline">

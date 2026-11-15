@@ -126,19 +126,19 @@ export default function PageCaisse() {
       {chargement && <p className="text-gray-500 mb-4">Chargement...</p>}
 
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <p className="text-sm text-gray-500">Entrées</p>
           <p className="text-2xl font-bold text-green-600">
             {format(totalEntrees)}
           </p>
         </div>
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <p className="text-sm text-gray-500">Sorties</p>
           <p className="text-2xl font-bold text-red-500">
             {format(totalSorties)}
           </p>
         </div>
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <p className="text-sm text-gray-500">Solde</p>
           <p
             className={
@@ -152,7 +152,7 @@ export default function PageCaisse() {
         </div>
       </div>
 
-      <div className="border rounded-lg p-4 shadow mb-8">
+      <div className="card mb-8">
         <h2 className="font-bold mb-2">Nouvelle dépense</h2>
         <div className="flex gap-2">
           <input

@@ -12,7 +12,7 @@ export default function CarteArticle({
   onAjouterAuPanier,
 }: Props) {
   return (
-    <div className="border rounded-lg p-4 shadow">
+    <div className="card">
       <h2 className="font-bold">{nom}</h2>
       <p>{prix} FCFA</p>
       <p className={stock < 5 ? "text-red-500" : "text-green-600"}>

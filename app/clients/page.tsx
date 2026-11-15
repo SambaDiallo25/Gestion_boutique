@@ -96,18 +96,18 @@ export default function PageClients() {
       {chargement && <p className="text-gray-500 mb-4">Chargement...</p>}
 
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <p className="text-sm text-gray-500">Clients</p>
           <p className="text-2xl font-bold">{clients.length}</p>
         </div>
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <p className="text-sm text-gray-500">Meilleur client</p>
           <p className="text-2xl font-bold">{meilleur ? meilleur.nom : "-"}</p>
           {meilleur && (
             <p className="text-sm text-gray-500">{format(meilleur.total)}</p>
           )}
         </div>
-        <div className="border rounded-lg p-4 shadow">
+        <div className="card">
           <p className="text-sm text-gray-500">Panier moyen</p>
           <p className="text-2xl font-bold">{format(panierMoyen)}</p>
         </div>
@@ -125,7 +125,7 @@ export default function PageClients() {
       )}
 
       {affiches.map((c, index) => (
-        <div key={c.cle} className="border rounded-lg p-4 shadow mb-3">
+        <div key={c.cle} className="card mb-3">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="font-bold">

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
 import { telechargerFacture } from "../../lib/facture";
+import { supabase } from "../../lib/supabase";
 
 type LigneVente = {
   id: number;
@@ -120,7 +120,7 @@ export default function PageHistorique() {
       )}
 
       {affichees.map((v) => (
-        <div key={v.id} className="border rounded-lg p-4 shadow mb-3">
+        <div key={v.id} className="card mb-3">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="font-bold">

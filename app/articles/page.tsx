@@ -144,7 +144,7 @@ export default function PageArticles() {
       )}
       {erreur && <p className="text-red-500 mb-4">Erreur : {erreur}</p>}
 
-      <div className="border rounded-lg p-4 shadow mb-6">
+      <div className="card mb-6">
         <h2 className="font-bold mb-2">Nouvel article</h2>
         <div className="flex gap-2">
           <input

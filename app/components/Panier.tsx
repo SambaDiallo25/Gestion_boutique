@@ -40,7 +40,7 @@ export default function Panier({
   }
 
   return (
-    <div className="border rounded-lg p-4 shadow">
+    <div className="card">
       <h2 className="font-bold mb-3">Panier</h2>
 
       {lignes.length === 0 && (

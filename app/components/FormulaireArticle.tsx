@@ -27,7 +27,7 @@ export default function FormulaireArticle({ onAjouter }: Props) {
   }
 
   return (
-    <div className="border rounded-lg p-4 shadow mb-6 max-w-sm">
+    <div className="card mb-6 max-w-sm">
       <h2 className="font-bold mb-2">Nouvel article</h2>
       <input
         className="border rounded p-2 w-full mb-2"

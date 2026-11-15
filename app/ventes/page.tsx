@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { envoyerParWhatsApp } from "../../lib/whatsapp";
+import { infoMode, type ModePaiement } from "../../lib/paiements";
 import CarteArticle from "../components/CarteArticle";
 import FormulaireArticle from "../components/FormulaireArticle";
 import Panier, { type LignePanier } from "../components/Panier";
 import type { DonneesFacture } from "../components/FactureDocument";
-import { envoyerParWhatsApp } from "../../lib/whatsapp";
+
 type Article = { id: number; nom: string; prix: number; stock: number };
 
 export default function PageVentes() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [chargement, setChargement] = useState(true);
   const [erreurBase, setErreurBase] = useState("");
+  const [alerte, setAlerte] = useState("");
   const [panier, setPanier] = useState<LignePanier[]>([]);
   const [message, setMessage] = useState("");
   const [derniereVente, setDerniereVente] = useState<DonneesFacture | null>(
@@ -61,6 +64,15 @@ export default function PageVentes() {
 
   function ajouterAuPanier(article: Article) {
     const existe = panier.find((l) => l.articleId === article.id);
+    const dejaDansPanier = existe ? existe.quantite : 0;
+
+    if (dejaDansPanier >= article.stock) {
+      setAlerte(
+        `Stock insuffisant : il ne reste que ${article.stock} « ${article.nom} ».`,
+      );
+      return;
+    }
+
     if (existe) {
       setPanier(
         panier.map((l) =>
@@ -75,14 +87,27 @@ export default function PageVentes() {
           nom: article.nom,
           prix: article.prix,
           quantite: 1,
+          stock: article.stock,
         },
       ]);
     }
+    setAlerte("");
     setMessage("");
     setDerniereVente(null);
   }
 
   function changerQuantite(nom: string, delta: number) {
+    const ligne = panier.find((l) => l.nom === nom);
+    if (!ligne) return;
+
+    if (delta > 0 && ligne.quantite + delta > ligne.stock) {
+      setAlerte(
+        `Stock insuffisant : il ne reste que ${ligne.stock} « ${nom} ».`,
+      );
+      return;
+    }
+
+    setAlerte("");
     setPanier(
       panier
         .map((l) =>
@@ -92,12 +117,51 @@ export default function PageVentes() {
     );
   }
 
-  async function validerVente(client: string, total: number) {
+  async function validerVente(
+    client: string,
+    total: number,
+    mode: ModePaiement,
+  ) {
     setErreurBase("");
+    setAlerte("");
 
+    // 1. Relire le stock réel dans la base avant de vendre
+    const ids = panier.map((l) => l.articleId);
+    const { data: stocksData, error: errStock } = await supabase
+      .from("articles")
+      .select("id, nom, stock")
+      .in("id", ids);
+
+    if (errStock) {
+      setErreurBase(errStock.message);
+      return;
+    }
+    const stocks = stocksData ?? [];
+
+    const insuffisants = panier.filter((l) => {
+      const reel = stocks.find((s) => s.id === l.articleId);
+      return !reel || reel.stock < l.quantite;
+    });
+
+    if (insuffisants.length > 0) {
+      const { data: frais } = await supabase
+        .from("articles")
+        .select("*")
+        .order("id");
+      if (frais) setArticles(frais);
+
+      setPanier([]);
+      setAlerte(
+        `Stock insuffisant pour : ${insuffisants.map((l) => l.nom).join(", ")}. ` +
+          "Le stock a été actualisé, refais ton panier.",
+      );
+      return;
+    }
+
+    // 2. Enregistrer la vente
     const { data: vente, error } = await supabase
       .from("ventes")
-      .insert({ client_nom: client, total })
+      .insert({ client_nom: client, total, mode_paiement: mode })
       .select()
       .single();
 
@@ -121,21 +185,25 @@ export default function PageVentes() {
       return;
     }
 
+    // 3. Diminuer le stock à partir du stock réel
     for (const l of panier) {
-      const article = articles.find((a) => a.id === l.articleId);
-      if (!article) continue;
+      const reel = stocks.find((s) => s.id === l.articleId);
+      if (!reel) continue;
       await supabase
         .from("articles")
-        .update({ stock: Math.max(0, article.stock - l.quantite) })
+        .update({ stock: Math.max(0, reel.stock - l.quantite) })
         .eq("id", l.articleId);
     }
 
     setArticles(
       articles.map((a) => {
         const ligne = panier.find((l) => l.articleId === a.id);
-        return ligne
-          ? { ...a, stock: Math.max(0, a.stock - ligne.quantite) }
-          : a;
+        if (!ligne) return a;
+        const reel = stocks.find((s) => s.id === a.id);
+        return {
+          ...a,
+          stock: Math.max(0, (reel ? reel.stock : a.stock) - ligne.quantite),
+        };
       }),
     );
 
@@ -148,6 +216,7 @@ export default function PageVentes() {
         timeStyle: "short",
       }),
       total,
+      modePaiement: infoMode(mode).label,
       lignes: panier.map((l) => ({
         nom: l.nom,
         prix: l.prix,
@@ -155,7 +224,7 @@ export default function PageVentes() {
       })),
     });
     setMessage(
-      `Vente n°${vente.id} enregistrée pour ${client} : ${total} FCFA`,
+      `Vente n°${vente.id} enregistrée pour ${client} : ${total} FCFA (${infoMode(mode).label})`,
     );
     setPanier([]);
   }
@@ -210,6 +279,11 @@ export default function PageVentes() {
           )}
         </div>
       )}
+      {alerte && (
+        <p className="bg-orange-100 text-orange-800 rounded-lg p-3 mb-4">
+          {alerte}
+        </p>
+      )}
       {erreurBase && <p className="text-red-500 mb-4">Erreur : {erreurBase}</p>}
       {chargement && (
         <p className="text-gray-500 mb-4">Chargement des articles...</p>
@@ -223,6 +297,9 @@ export default function PageVentes() {
               nom={a.nom}
               prix={a.prix}
               stock={a.stock}
+              quantiteDansPanier={
+                panier.find((l) => l.articleId === a.id)?.quantite ?? 0
+              }
               onAjouterAuPanier={() => ajouterAuPanier(a)}
             />
           ))}

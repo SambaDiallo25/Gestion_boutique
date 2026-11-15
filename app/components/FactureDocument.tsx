@@ -8,6 +8,7 @@ export type DonneesFacture = {
   client: string;
   date: string;
   total: number;
+  modePaiement?: string;
   lignes: LigneFacture[];
 };
 
@@ -77,6 +78,9 @@ export default function FactureDocument({
 
         <View style={styles.infos}>
           <Text>Client : {donnees.client}</Text>
+          {donnees.modePaiement && (
+            <Text>Paiement : {donnees.modePaiement}</Text>
+          )}
         </View>
 
         <View style={[styles.ligne, styles.gras]}>

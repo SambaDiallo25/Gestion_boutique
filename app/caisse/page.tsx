@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { MODES_PAIEMENT, infoMode } from "../../lib/paiements";
 
 type Vente = {
   id: number;
   client_nom: string;
   total: number;
   created_at: string;
+  mode_paiement: string;
 };
 type Depense = {
   id: number;
@@ -107,6 +109,17 @@ export default function PageCaisse() {
   const totalSorties = depenses.reduce((somme, d) => somme + d.montant, 0);
   const solde = totalEntrees - totalSorties;
 
+  const parMode = MODES_PAIEMENT.map((m) => {
+    const total = ventes
+      .filter((v) => v.mode_paiement === m.valeur)
+      .reduce((somme, v) => somme + v.total, 0);
+    const pourcentage =
+      totalEntrees > 0 ? Math.round((total / totalEntrees) * 100) : 0;
+    return { ...m, total, pourcentage };
+  });
+  const especes = parMode.find((m) => m.valeur === "especes")?.total ?? 0;
+  const especesEnCaisse = especes - totalSorties;
+
   return (
     <main className="p-4 md:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -152,6 +165,45 @@ export default function PageCaisse() {
         </div>
       </div>
 
+      <h2 className="font-bold mb-2">Entrées par mode de paiement</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        {parMode.map((m) => (
+          <div key={m.valeur} className="card">
+            <div className="flex items-center justify-between">
+              <span className={`text-xs rounded px-2 py-1 ${m.badge}`}>
+                {m.label}
+              </span>
+              <span className="text-sm text-gray-500">{m.pourcentage} %</span>
+            </div>
+            <p className="font-bold mt-2">{format(m.total)}</p>
+            <div className="bg-slate-100 rounded h-2 mt-2">
+              <div
+                className="bg-emerald-500 h-2 rounded"
+                style={{ width: `${m.pourcentage}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="card mb-8 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="font-bold">Espèces en caisse</p>
+          <p className="text-sm text-gray-500">
+            Espèces encaissées moins les dépenses du jour
+          </p>
+        </div>
+        <p
+          className={
+            especesEnCaisse < 0
+              ? "text-xl font-bold text-red-500"
+              : "text-xl font-bold"
+          }
+        >
+          {format(especesEnCaisse)}
+        </p>
+      </div>
+
       <div className="card mb-8">
         <h2 className="font-bold mb-2">Nouvelle dépense</h2>
         <div className="flex flex-wrap gap-2">
@@ -184,14 +236,24 @@ export default function PageCaisse() {
             <p className="text-gray-500 text-sm">Aucune vente ce jour-là.</p>
           )}
           {ventes.map((v) => (
-            <div key={v.id} className="flex justify-between border-b py-2">
+            <div
+              key={v.id}
+              className="flex justify-between gap-2 border-b py-2"
+            >
               <span>
                 #{v.id} · {v.client_nom}{" "}
                 <span className="text-sm text-gray-500">
                   {heure(v.created_at)}
+                </span>{" "}
+                <span
+                  className={`text-xs rounded px-2 py-1 ${infoMode(v.mode_paiement).badge}`}
+                >
+                  {infoMode(v.mode_paiement).label}
                 </span>
               </span>
-              <span className="text-green-600">+ {format(v.total)}</span>
+              <span className="text-green-600 whitespace-nowrap">
+                + {format(v.total)}
+              </span>
             </div>
           ))}
         </div>
@@ -204,14 +266,19 @@ export default function PageCaisse() {
             <p className="text-gray-500 text-sm">Aucune dépense ce jour-là.</p>
           )}
           {depenses.map((d) => (
-            <div key={d.id} className="flex justify-between border-b py-2">
+            <div
+              key={d.id}
+              className="flex justify-between gap-2 border-b py-2"
+            >
               <span>
                 {d.libelle}{" "}
                 <span className="text-sm text-gray-500">
                   {heure(d.created_at)}
                 </span>
               </span>
-              <span className="text-red-500">− {format(d.montant)}</span>
+              <span className="text-red-500 whitespace-nowrap">
+                − {format(d.montant)}
+              </span>
             </div>
           ))}
         </div>

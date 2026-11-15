@@ -9,12 +9,14 @@ export function messageFacture(d: DonneesFacture) {
   const lignes = d.lignes
     .map((l) => `• ${l.nom} × ${l.quantite} : ${format(l.prix * l.quantite)}`)
     .join("\n");
+  const paiement = d.modePaiement ? `Paiement : ${d.modePaiement}\n` : "";
 
   return (
     `*${d.boutique}*\n` +
     `Facture ${numero} du ${d.date}\n` +
-    `Client : ${d.client}\n\n` +
-    `${lignes}\n\n` +
+    `Client : ${d.client}\n` +
+    paiement +
+    `\n${lignes}\n\n` +
     `*Total : ${format(d.total)}*\n\n` +
     `Merci pour votre achat !`
   );

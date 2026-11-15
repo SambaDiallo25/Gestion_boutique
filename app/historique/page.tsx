@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { telechargerFacture } from "../../lib/facture";
 import { envoyerParWhatsApp } from "../../lib/whatsapp";
+import { MODES_PAIEMENT, infoMode } from "../../lib/paiements";
 import type { DonneesFacture } from "../components/FactureDocument";
 
 type LigneVente = {
@@ -18,6 +19,7 @@ type Vente = {
   client_nom: string;
   total: number;
   created_at: string;
+  mode_paiement: string;
   lignes_vente: LigneVente[];
 };
 
@@ -38,6 +40,7 @@ export default function PageHistorique() {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
   const [recherche, setRecherche] = useState("");
+  const [filtreMode, setFiltreMode] = useState("tous");
   const [ouverte, setOuverte] = useState<number | null>(null);
   const [generation, setGeneration] = useState<number | null>(null);
 
@@ -73,6 +76,7 @@ export default function PageHistorique() {
       client: v.client_nom,
       date: dateHeure(v.created_at),
       total: v.total,
+      modePaiement: infoMode(v.mode_paiement).label,
       lignes: v.lignes_vente.map((l) => ({
         nom: l.article_nom,
         prix: l.prix,
@@ -94,8 +98,9 @@ export default function PageHistorique() {
 
   const affichees = ventes.filter(
     (v) =>
-      v.client_nom.toLowerCase().includes(recherche.toLowerCase()) ||
-      String(v.id) === recherche.trim(),
+      (v.client_nom.toLowerCase().includes(recherche.toLowerCase()) ||
+        String(v.id) === recherche.trim()) &&
+      (filtreMode === "tous" || v.mode_paiement === filtreMode),
   );
   const totalAffiche = affichees.reduce((somme, v) => somme + v.total, 0);
 
@@ -110,6 +115,18 @@ export default function PageHistorique() {
           value={recherche}
           onChange={(e) => setRecherche(e.target.value)}
         />
+        <select
+          className="border rounded p-2"
+          value={filtreMode}
+          onChange={(e) => setFiltreMode(e.target.value)}
+        >
+          <option value="tous">Tous les modes</option>
+          {MODES_PAIEMENT.map((m) => (
+            <option key={m.valeur} value={m.valeur}>
+              {m.label}
+            </option>
+          ))}
+        </select>
         <p className="text-gray-500">
           {affichees.length} vente(s) · {format(totalAffiche)}
         </p>
@@ -126,7 +143,12 @@ export default function PageHistorique() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-bold">
-                Vente n°{v.id} · {v.client_nom}
+                Vente n°{v.id} · {v.client_nom}{" "}
+                <span
+                  className={`text-xs rounded px-2 py-1 ml-1 ${infoMode(v.mode_paiement).badge}`}
+                >
+                  {infoMode(v.mode_paiement).label}
+                </span>
               </p>
               <p className="text-sm text-gray-500">{dateHeure(v.created_at)}</p>
             </div>

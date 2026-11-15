@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { MODES_PAIEMENT, type ModePaiement } from "../../lib/paiements";
 
 export type LignePanier = {
   articleId: number;
   nom: string;
   prix: number;
   quantite: number;
+  stock: number;
 };
 
 type Props = {
   lignes: LignePanier[];
   onChangerQuantite: (nom: string, delta: number) => void;
-  onValider: (client: string, total: number) => void;
+  onValider: (client: string, total: number, mode: ModePaiement) => void;
 };
 
 export default function Panier({
@@ -21,6 +23,7 @@ export default function Panier({
   onValider,
 }: Props) {
   const [client, setClient] = useState("");
+  const [mode, setMode] = useState<ModePaiement>("especes");
   const [erreur, setErreur] = useState("");
 
   const total = lignes.reduce((somme, l) => somme + l.prix * l.quantite, 0);
@@ -34,8 +37,9 @@ export default function Panier({
       setErreur("Entre le nom du client.");
       return;
     }
-    onValider(client.trim(), total);
+    onValider(client.trim(), total, mode);
     setClient("");
+    setMode("especes");
     setErreur("");
   }
 
@@ -56,8 +60,9 @@ export default function Panier({
           <button
             className="border rounded w-8 h-8"
             onClick={() => onChangerQuantite(l.nom, -1)}
+            disabled={l.quantite >= l.stock}
           >
-            −
+            -
           </button>
           <span className="w-6 text-center">{l.quantite}</span>
           <button
@@ -72,6 +77,24 @@ export default function Panier({
       <p className="font-bold text-xl border-t pt-3 mt-3">
         Total : {total} FCFA
       </p>
+
+      <p className="text-sm text-gray-500 mt-3 mb-1">Mode de paiement</p>
+      <div className="grid grid-cols-3 gap-2">
+        {MODES_PAIEMENT.map((m) => (
+          <button
+            key={m.valeur}
+            type="button"
+            className={`rounded-lg border px-1 py-2 text-xs sm:text-sm font-medium ${
+              mode === m.valeur
+                ? "bg-emerald-600 text-white border-emerald-600"
+                : "bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+            onClick={() => setMode(m.valeur)}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
 
       <input
         className="border rounded p-2 w-full mt-3"

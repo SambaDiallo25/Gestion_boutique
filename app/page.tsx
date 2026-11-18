@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Bar,
   BarChart,
@@ -21,12 +21,20 @@ type Vente = {
   lignes_vente: LigneVente[];
 };
 type Depense = { id: number; montant: number; created_at: string };
+type Paiement = { id: number; montant: number; created_at: string };
+type Creance = { id: number; total: number; paiements: { montant: number }[] };
 type ArticleBas = { id: number; nom: string; stock: number };
 
 const SEUIL_STOCK_BAS = 5;
 
 function format(n: number) {
   return n.toLocaleString("fr-FR") + " FCFA";
+}
+
+function abreger(n: number) {
+  if (n >= 1_000_000) return `${Number((n / 1_000_000).toFixed(1))}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+  return String(n);
 }
 
 function cleJour(dateIso: string) {
@@ -36,6 +44,8 @@ function cleJour(dateIso: string) {
 export default function Accueil() {
   const [ventes, setVentes] = useState<Vente[]>([]);
   const [depenses, setDepenses] = useState<Depense[]>([]);
+  const [paiements, setPaiements] = useState<Paiement[]>([]);
+  const [creances, setCreances] = useState<Creance[]>([]);
   const [stockBas, setStockBas] = useState<ArticleBas[]>([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
@@ -47,7 +57,7 @@ export default function Accueil() {
       debut.setDate(debut.getDate() - 6);
       const debutIso = debut.toISOString();
 
-      const [rv, rd, ra] = await Promise.all([
+      const [rv, rd, ra, rp, rc] = await Promise.all([
         supabase
           .from("ventes")
           .select(
@@ -63,15 +73,26 @@ export default function Accueil() {
           .select("id, nom, stock")
           .lt("stock", SEUIL_STOCK_BAS)
           .order("stock"),
+        supabase
+          .from("paiements")
+          .select("id, montant, created_at")
+          .gte("created_at", debutIso),
+        supabase
+          .from("ventes")
+          .select("id, total, paiements(montant)")
+          .limit(2000),
       ]);
 
-      const erreurBase = rv.error ?? rd.error ?? ra.error;
+      const erreurBase =
+        rv.error ?? rd.error ?? ra.error ?? rp.error ?? rc.error;
       if (erreurBase) {
         setErreur(erreurBase.message);
       } else {
         setVentes(rv.data ?? []);
         setDepenses(rd.data ?? []);
         setStockBas(ra.data ?? []);
+        setPaiements(rp.data ?? []);
+        setCreances(rc.data ?? []);
       }
       setChargement(false);
     }
@@ -98,11 +119,22 @@ export default function Accueil() {
   const ventesJour = ventes.filter((v) => cleJour(v.created_at) === aujourdhui);
   const caJour = ventesJour.reduce((somme, v) => somme + v.total, 0);
   const caHier = jours[5].total;
+  const encaisseJour = paiements
+    .filter((p) => cleJour(p.created_at) === aujourdhui)
+    .reduce((somme, p) => somme + p.montant, 0);
   const depensesJour = depenses
     .filter((d) => cleJour(d.created_at) === aujourdhui)
     .reduce((somme, d) => somme + d.montant, 0);
-  const soldeJour = caJour - depensesJour;
+  const soldeJour = encaisseJour - depensesJour;
   const ca7Jours = jours.reduce((somme, j) => somme + j.total, 0);
+
+  const restes = creances
+    .map(
+      (c) => c.total - c.paiements.reduce((somme, p) => somme + p.montant, 0),
+    )
+    .filter((r) => r > 0);
+  const aRecevoir = restes.reduce((somme, r) => somme + r, 0);
+  const nbCredits = restes.length;
 
   const parArticle = ventes
     .flatMap((v) => v.lignes_vente)
@@ -135,16 +167,22 @@ export default function Accueil() {
       {erreur && <p className="text-red-500 mb-4">Erreur : {erreur}</p>}
       {chargement && <p className="text-gray-500 mb-4">Chargement...</p>}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="card">
-          <p className="text-sm text-gray-500">Ventes du jour</p>
-          <p className="text-base sm:text-xl lg:text-2xl font-bold text-green-600">{format(caJour)}</p>
-          <p className="text-xs text-gray-500">Hier : {format(caHier)}</p>
+          <p className="text-sm text-gray-500">Chiffre daffaires du jour</p>
+          <p className="text-base sm:text-xl lg:text-2xl font-bold">
+            {format(caJour)}
+          </p>
+          <p className="text-xs text-gray-500">
+            {ventesJour.length} vente(s) · Hier : {format(caHier)}
+          </p>
         </div>
         <div className="card">
-          <p className="text-sm text-gray-500">Nombre de ventes</p>
-          <p className="text-base sm:text-xl lg:text-2xl font-bold">{ventesJour.length}</p>
-          <p className="text-xs text-gray-500">Aujourdhui</p>
+          <p className="text-sm text-gray-500">Encaissé aujourdhui</p>
+          <p className="text-base sm:text-xl lg:text-2xl font-bold text-green-600">
+            {format(encaisseJour)}
+          </p>
+          <p className="text-xs text-gray-500">Argent réellement reçu</p>
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Dépenses du jour</p>
@@ -163,8 +201,31 @@ export default function Accueil() {
           >
             {format(soldeJour)}
           </p>
+          <p className="text-xs text-gray-500">Encaissé − dépenses</p>
         </div>
       </div>
+
+      {aRecevoir > 0 && (
+        <div className="card bg-orange-50 border-orange-200 mb-8 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm text-orange-700">
+              À recevoir (ventes à crédit)
+            </p>
+            <p className="text-xl font-bold text-orange-600">
+              {format(aRecevoir)}
+            </p>
+            <p className="text-xs text-orange-700">
+              {nbCredits} vente(s) non soldée(s)
+            </p>
+          </div>
+          <Link
+            href="/historique"
+            className="bg-orange-500 text-white rounded px-4 py-2 text-sm font-medium"
+          >
+            Voir et encaisser
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 card">
@@ -176,10 +237,7 @@ export default function Accueil() {
             <BarChart data={jours}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="jour" />
-              <YAxis
-                width={50}
-                tickFormatter={(n: number) => (n >= 1000 ? Math.round(n / 1000) + "k" : String(n))}
-              />
+              <YAxis width={55} tickFormatter={abreger} />
               <Tooltip formatter={(valeur) => format(Number(valeur))} />
               <Bar
                 dataKey="total"

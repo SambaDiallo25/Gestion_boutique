@@ -188,13 +188,11 @@ export default function PageVentes() {
 
     // 3. Enregistrer le paiement (s'il y a eu un versement)
     if (montantPaye > 0) {
-      const { error: errPaiement } = await supabase
-        .from("paiements")
-        .insert({
-          vente_id: vente.id,
-          montant: montantPaye,
-          mode_paiement: mode,
-        });
+      const { error: errPaiement } = await supabase.from("paiements").insert({
+        vente_id: vente.id,
+        montant: montantPaye,
+        mode_paiement: mode,
+      });
 
       if (errPaiement) {
         setErreurBase(errPaiement.message);
@@ -235,12 +233,9 @@ export default function PageVentes() {
         timeStyle: "short",
       }),
       total,
-      modePaiement:
-        montantPaye === 0
-          ? "Non payé (crédit)"
-          : reste > 0
-            ? `${infoMode(mode).label} (acompte ${montantPaye} FCFA, reste ${reste} FCFA)`
-            : infoMode(mode).label,
+      modePaiement: montantPaye > 0 ? infoMode(mode).label : undefined,
+      paye: montantPaye,
+      reste,
       lignes: panier.map((l) => ({
         nom: l.nom,
         prix: l.prix,

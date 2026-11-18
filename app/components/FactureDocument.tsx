@@ -9,6 +9,8 @@ export type DonneesFacture = {
   date: string;
   total: number;
   modePaiement?: string;
+  paye?: number;
+  reste?: number;
   lignes: LigneFacture[];
 };
 
@@ -100,6 +102,35 @@ export default function FactureDocument({
         ))}
 
         <Text style={styles.total}>TOTAL : {format(donnees.total)}</Text>
+
+        {donnees.paye !== undefined && donnees.reste !== undefined && (
+          <View style={{ marginTop: 8 }}>
+            <Text style={{ textAlign: "right" }}>
+              Déjà payé : {format(donnees.paye)}
+            </Text>
+            {donnees.reste > 0 ? (
+              <Text
+                style={{
+                  textAlign: "right",
+                  fontFamily: "Helvetica-Bold",
+                  color: "#c2410c",
+                }}
+              >
+                Reste à payer : {format(donnees.reste)}
+              </Text>
+            ) : (
+              <Text
+                style={{
+                  textAlign: "right",
+                  fontFamily: "Helvetica-Bold",
+                  color: "#15803d",
+                }}
+              >
+                PAYÉ
+              </Text>
+            )}
+          </View>
+        )}
 
         <Text style={styles.pied}>Merci pour votre achat !</Text>
       </Page>

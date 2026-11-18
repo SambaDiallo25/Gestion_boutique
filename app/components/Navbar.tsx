@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  FileText,
   History,
   LayoutDashboard,
   LogOut,
@@ -22,6 +23,7 @@ const liens = [
   { href: "/articles", label: "Articles", icone: Package },
   { href: "/clients", label: "Clients", icone: Users },
   { href: "/caisse", label: "Caisse", icone: Wallet },
+  { href: "/rapports", label: "Rapports", icone: FileText },
 ];
 
 export default function Navbar() {

@@ -104,12 +104,6 @@ export default function PageHistorique() {
     const modes = [
       ...new Set(v.paiements.map((p) => infoMode(p.mode_paiement).label)),
     ];
-    const description =
-      paye(v) === 0
-        ? "Non payé (crédit)"
-        : reste(v) > 0
-          ? `${modes.join(", ")} (versé ${paye(v)} FCFA, reste ${reste(v)} FCFA)`
-          : modes.join(", ");
 
     return {
       boutique: nomBoutique,
@@ -117,7 +111,9 @@ export default function PageHistorique() {
       client: v.client_nom,
       date: dateHeure(v.created_at),
       total: v.total,
-      modePaiement: description,
+      modePaiement: modes.length > 0 ? modes.join(", ") : undefined,
+      paye: paye(v),
+      reste: reste(v),
       lignes: v.lignes_vente.map((l) => ({
         nom: l.article_nom,
         prix: l.prix,

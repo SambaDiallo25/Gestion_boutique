@@ -11,10 +11,15 @@ import {
   YAxis,
 } from "recharts";
 import { supabase } from "../../lib/supabase";
-import { MODES_PAIEMENT, infoMode } from "../../lib/paiements";
-import { telechargerCsv } from "../../lib/export";
+import { MODES_PAIEMENT } from "../../lib/paiements";
+import BoutonExcel from "../components/BoutonExcel";
 
-type LigneVente = { article_nom: string; prix: number; quantite: number };
+type LigneVente = {
+  article_nom: string;
+  prix: number;
+  quantite: number;
+  cout_unitaire: number;
+};
 type Vente = {
   id: number;
   client_nom: string;
@@ -35,6 +40,7 @@ type Depense = {
   id: number;
   libelle: string;
   montant: number;
+  categorie: string;
   created_at: string;
 };
 
@@ -46,13 +52,6 @@ function abreger(n: number) {
   if (n >= 1_000_000) return `${Number((n / 1_000_000).toFixed(1))}M`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
   return String(n);
-}
-
-function dateHeure(dateIso: string) {
-  return new Date(dateIso).toLocaleString("fr-FR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
 }
 
 function cleJour(dateIso: string) {
@@ -120,6 +119,29 @@ export default function PageRapports() {
   const sorties = depenses.reduce((somme, d) => somme + d.montant, 0);
   const tresorerie = encaisse - sorties;
 
+  const charges = depenses
+    .filter((d) => d.categorie === "charge")
+    .reduce((somme, d) => somme + d.montant, 0);
+  const achatsStock = sorties - charges;
+
+  const margeBrute = ventes.reduce(
+    (somme, v) =>
+      somme +
+      v.lignes_vente.reduce(
+        (s, l) => s + (l.prix - l.cout_unitaire) * l.quantite,
+        0,
+      ),
+    0,
+  );
+  const beneficeNet = margeBrute - charges;
+  const tauxMarge =
+    chiffreAffaires > 0 ? Math.round((margeBrute / chiffreAffaires) * 100) : 0;
+  const tauxNet =
+    chiffreAffaires > 0 ? Math.round((beneficeNet / chiffreAffaires) * 100) : 0;
+  const lignesSansCout = ventes
+    .flatMap((v) => v.lignes_vente)
+    .filter((l) => l.cout_unitaire === 0).length;
+
   const [annee, numeroMois] = mois.split("-").map(Number);
   const nbJours = new Date(annee, numeroMois, 0).getDate();
   const jours = Array.from({ length: nbJours }, (_, i) => {
@@ -140,21 +162,29 @@ export default function PageRapports() {
 
   const parArticle = ventes
     .flatMap((v) => v.lignes_vente)
-    .reduce<Record<string, { nom: string; quantite: number; montant: number }>>(
-      (acc, l) => {
-        if (!acc[l.article_nom]) {
-          acc[l.article_nom] = { nom: l.article_nom, quantite: 0, montant: 0 };
-        }
-        acc[l.article_nom].quantite += l.quantite;
-        acc[l.article_nom].montant += l.prix * l.quantite;
-        return acc;
-      },
-      {},
-    );
+    .reduce<
+      Record<
+        string,
+        { nom: string; quantite: number; montant: number; marge: number }
+      >
+    >((acc, l) => {
+      if (!acc[l.article_nom]) {
+        acc[l.article_nom] = {
+          nom: l.article_nom,
+          quantite: 0,
+          montant: 0,
+          marge: 0,
+        };
+      }
+      acc[l.article_nom].quantite += l.quantite;
+      acc[l.article_nom].montant += l.prix * l.quantite;
+      acc[l.article_nom].marge += (l.prix - l.cout_unitaire) * l.quantite;
+      return acc;
+    }, {});
   const topArticles = Object.values(parArticle)
-    .sort((a, b) => b.montant - a.montant)
+    .sort((a, b) => b.marge - a.marge)
     .slice(0, 5);
-  const maxMontant = topArticles[0]?.montant ?? 1;
+  const maxMarge = Math.max(...topArticles.map((a) => a.marge), 1);
 
   const libelleMois = new Date(`${mois}-01T00:00:00`).toLocaleDateString(
     "fr-FR",
@@ -163,95 +193,6 @@ export default function PageRapports() {
       year: "numeric",
     },
   );
-
-  // --- Exports ---
-  function payeVente(v: Vente) {
-    return v.paiements.reduce((somme, p) => somme + p.montant, 0);
-  }
-
-  const payeMois = ventes.reduce((somme, v) => somme + payeVente(v), 0);
-  const resteMois = ventes.reduce(
-    (somme, v) => somme + Math.max(0, v.total - payeVente(v)),
-    0,
-  );
-
-  function exporterVentes() {
-    telechargerCsv(
-      `ventes-${mois}.csv`,
-      [
-        "N° vente",
-        "Date",
-        "Client",
-        "Total (FCFA)",
-        "Payé à ce jour (FCFA)",
-        "Reste à payer (FCFA)",
-        "Articles",
-      ],
-      [
-        ...ventes.map((v) => [
-          v.id,
-          dateHeure(v.created_at),
-          v.client_nom,
-          v.total,
-          payeVente(v),
-          Math.max(0, v.total - payeVente(v)),
-          v.lignes_vente
-            .map((l) => `${l.article_nom} x${l.quantite}`)
-            .join(" | "),
-        ]),
-        [],
-        ["", "", "TOTAL", chiffreAffaires, payeMois, resteMois, ""],
-      ],
-    );
-  }
-
-  function exporterPaiements() {
-    telechargerCsv(
-      `paiements-${mois}.csv`,
-      ["N° vente", "Date", "Client", "Mode de paiement", "Montant (FCFA)"],
-      [
-        ...paiements.map((p) => [
-          p.vente_id,
-          dateHeure(p.created_at),
-          p.ventes?.client_nom ?? "",
-          infoMode(p.mode_paiement).label,
-          p.montant,
-        ]),
-        [],
-        ["", "", "", "TOTAL", encaisse],
-        ...parMode.map((m) => ["", "", "", `dont ${m.label}`, m.total]),
-      ],
-    );
-  }
-
-  function exporterDepenses() {
-    telechargerCsv(
-      `depenses-${mois}.csv`,
-      ["Date", "Libellé", "Montant (FCFA)"],
-      [
-        ...depenses.map((d) => [dateHeure(d.created_at), d.libelle, d.montant]),
-        [],
-        ["", "TOTAL", sorties],
-      ],
-    );
-  }
-
-  function exporterResume() {
-    telechargerCsv(
-      `resume-${mois}.csv`,
-      ["Indicateur", "Valeur"],
-      [
-        ["Mois", libelleMois],
-        ["Nombre de ventes", ventes.length],
-        ["Chiffre d'affaires (FCFA)", chiffreAffaires],
-        ["Encaissé (FCFA)", encaisse],
-        ...parMode.map((m) => [`   dont ${m.label} (FCFA)`, m.total]),
-        ["Dépenses (FCFA)", sorties],
-        ["Trésorerie du mois (FCFA)", tresorerie],
-        ["Reste à encaisser sur les ventes du mois (FCFA)", resteMois],
-      ],
-    );
-  }
 
   return (
     <main className="p-4 md:p-8">
@@ -274,7 +215,23 @@ export default function PageRapports() {
       {erreur && <p className="text-red-500 mb-4">Erreur : {erreur}</p>}
       {chargement && <p className="text-gray-500 mb-4">Chargement...</p>}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <BoutonExcel
+        mois={mois}
+        libelleMois={libelleMois}
+        ventes={ventes}
+        paiements={paiements}
+        depenses={depenses}
+      />
+
+      {lignesSansCout > 0 && (
+        <p className="bg-sky-50 text-sky-800 rounded-lg p-3 mb-4">
+          {lignesSansCout} ligne(s) de vente nont pas de prix dachat : la marge
+          est surestimée. Renseigne les prix dachat dans la page Articles.
+        </p>
+      )}
+
+      <h2 className="font-bold mb-2">Argent</h2>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="card">
           <p className="text-sm text-gray-500">Chiffre daffaires</p>
           <p className="text-base sm:text-xl lg:text-2xl font-bold">
@@ -293,6 +250,9 @@ export default function PageRapports() {
           <p className="text-base sm:text-xl lg:text-2xl font-bold text-red-500">
             {format(sorties)}
           </p>
+          <p className="text-xs text-gray-500">
+            dont achats de stock : {format(achatsStock)}
+          </p>
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Trésorerie du mois</p>
@@ -306,6 +266,49 @@ export default function PageRapports() {
             {format(tresorerie)}
           </p>
           <p className="text-xs text-gray-500">Encaissé − dépenses</p>
+        </div>
+      </div>
+
+      <h2 className="font-bold mb-2">Rentabilité</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="card">
+          <p className="text-sm text-gray-500">Marge brute</p>
+          <p
+            className={
+              margeBrute < 0
+                ? "text-base sm:text-xl lg:text-2xl font-bold text-red-500"
+                : "text-base sm:text-xl lg:text-2xl font-bold text-emerald-600"
+            }
+          >
+            {format(margeBrute)}
+          </p>
+          <p className="text-xs text-gray-500">
+            Taux de marge : {tauxMarge} % du chiffre daffaires
+          </p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-gray-500">Charges de fonctionnement</p>
+          <p className="text-base sm:text-xl lg:text-2xl font-bold text-red-500">
+            {format(charges)}
+          </p>
+          <p className="text-xs text-gray-500">
+            Loyer, transport, électricité...
+          </p>
+        </div>
+        <div className="card border-emerald-200 bg-emerald-50">
+          <p className="text-sm text-emerald-800">Bénéfice net</p>
+          <p
+            className={
+              beneficeNet < 0
+                ? "text-base sm:text-xl lg:text-2xl font-bold text-red-600"
+                : "text-base sm:text-xl lg:text-2xl font-bold text-emerald-700"
+            }
+          >
+            {format(beneficeNet)}
+          </p>
+          <p className="text-xs text-emerald-800">
+            Marge brute − charges · {tauxNet} % du chiffre daffaires
+          </p>
         </div>
       </div>
 
@@ -354,68 +357,41 @@ export default function PageRapports() {
         </div>
 
         <div className="card">
-          <h2 className="font-bold mb-3">Articles qui rapportent le plus</h2>
+          <h2 className="font-bold mb-3">
+            Articles qui rapportent le plus (marge)
+          </h2>
           {topArticles.length === 0 && (
             <p className="text-sm text-gray-500">Aucune vente ce mois-ci.</p>
           )}
           {topArticles.map((a) => (
             <div key={a.nom} className="mb-3">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between gap-2 text-sm">
                 <span>
                   {a.nom} <span className="text-gray-500">× {a.quantite}</span>
                 </span>
-                <span className="font-bold">{format(a.montant)}</span>
+                <span className="font-bold">{format(a.marge)}</span>
               </div>
               <div className="bg-gray-100 rounded h-2 mt-1">
                 <div
                   className="bg-green-500 h-2 rounded"
-                  style={{ width: `${(a.montant / maxMontant) * 100}%` }}
+                  style={{
+                    width: `${(Math.max(0, a.marge) / maxMarge) * 100}%`,
+                  }}
                 />
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Ventes : {format(a.montant)}
+              </p>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="card">
-        <h2 className="font-bold mb-1">Exporter pour Excel</h2>
-        <p className="text-sm text-gray-500 mb-3">
-          Fichiers du mois de {libelleMois}, à ouvrir directement dans Excel.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            className="bg-black text-white rounded px-4 py-2 disabled:opacity-50"
-            onClick={exporterVentes}
-            disabled={ventes.length === 0}
-          >
-            Ventes ({ventes.length})
-          </button>
-          <button
-            className="bg-black text-white rounded px-4 py-2 disabled:opacity-50"
-            onClick={exporterPaiements}
-            disabled={paiements.length === 0}
-          >
-            Paiements ({paiements.length})
-          </button>
-          <button
-            className="bg-black text-white rounded px-4 py-2 disabled:opacity-50"
-            onClick={exporterDepenses}
-            disabled={depenses.length === 0}
-          >
-            Dépenses ({depenses.length})
-          </button>
-          <button
-            className="bg-emerald-600 text-white rounded px-4 py-2"
-            onClick={exporterResume}
-          >
-            Résumé du mois
-          </button>
-        </div>
-      </div>
-
       <p className="text-xs text-gray-500 mt-4">
-        La trésorerie nest pas le bénéfice : pour calculer une vraie marge, il
-        faudrait enregistrer le prix dachat de chaque article.
+        Les achats de marchandises ne sont pas retranchés du bénéfice : le coût
+        des articles vendus est déjà dans la marge brute. Seules les charges
+        sont déduites. Pense à classer tes dépenses dans la bonne catégorie
+        depuis la page Caisse.
       </p>
     </main>
   );

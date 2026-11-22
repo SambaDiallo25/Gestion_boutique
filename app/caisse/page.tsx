@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { MODES_PAIEMENT, infoMode } from "../../lib/paiements";
+import {
+  CATEGORIES_DEPENSE,
+  infoCategorie,
+  type CategorieDepense,
+} from "../../lib/depenses";
 
 type Paiement = {
   id: number;
@@ -16,6 +21,7 @@ type Depense = {
   id: number;
   libelle: string;
   montant: number;
+  categorie: string;
   created_at: string;
 };
 
@@ -40,6 +46,7 @@ export default function PageCaisse() {
   const [erreur, setErreur] = useState("");
   const [libelle, setLibelle] = useState("");
   const [montant, setMontant] = useState("");
+  const [categorie, setCategorie] = useState<CategorieDepense>("charge");
 
   useEffect(() => {
     async function charger() {
@@ -87,7 +94,11 @@ export default function PageCaisse() {
 
     const { data, error } = await supabase
       .from("depenses")
-      .insert({ libelle: libelle.trim(), montant: Number(montant) })
+      .insert({
+        libelle: libelle.trim(),
+        montant: Math.floor(Number(montant)),
+        categorie,
+      })
       .select()
       .single();
 
@@ -103,11 +114,32 @@ export default function PageCaisse() {
     }
     setLibelle("");
     setMontant("");
+    setCategorie("charge");
     setErreur("");
+  }
+
+  async function basculerCategorie(d: Depense) {
+    const nouvelle = d.categorie === "charge" ? "achat_stock" : "charge";
+    const { error } = await supabase
+      .from("depenses")
+      .update({ categorie: nouvelle })
+      .eq("id", d.id);
+
+    if (error) {
+      setErreur(error.message);
+      return;
+    }
+    setDepenses(
+      depenses.map((x) => (x.id === d.id ? { ...x, categorie: nouvelle } : x)),
+    );
   }
 
   const totalEntrees = paiements.reduce((somme, p) => somme + p.montant, 0);
   const totalSorties = depenses.reduce((somme, d) => somme + d.montant, 0);
+  const charges = depenses
+    .filter((d) => d.categorie === "charge")
+    .reduce((somme, d) => somme + d.montant, 0);
+  const achats = totalSorties - charges;
   const solde = totalEntrees - totalSorties;
 
   const parMode = MODES_PAIEMENT.map((m) => {
@@ -150,6 +182,9 @@ export default function PageCaisse() {
           <p className="text-sm text-gray-500">Sorties</p>
           <p className="text-base sm:text-xl lg:text-2xl font-bold text-red-500">
             {format(totalSorties)}
+          </p>
+          <p className="text-xs text-gray-500">
+            Charges : {format(charges)} · Achats : {format(achats)}
           </p>
         </div>
         <div className="card">
@@ -209,18 +244,29 @@ export default function PageCaisse() {
         <h2 className="font-bold mb-2">Nouvelle dépense</h2>
         <div className="flex flex-wrap gap-2">
           <input
-            className="border rounded p-2 flex-1"
-            placeholder="Ex : Transport, achat de stock..."
+            className="border rounded p-2 flex-1 min-w-40"
+            placeholder="Ex : Transport, achat de riz..."
             value={libelle}
             onChange={(e) => setLibelle(e.target.value)}
           />
           <input
-            className="border rounded p-2 w-40"
+            className="border rounded p-2 w-36"
             type="number"
             placeholder="Montant"
             value={montant}
             onChange={(e) => setMontant(e.target.value)}
           />
+          <select
+            className="border rounded p-2"
+            value={categorie}
+            onChange={(e) => setCategorie(e.target.value as CategorieDepense)}
+          >
+            {CATEGORIES_DEPENSE.map((c) => (
+              <option key={c.valeur} value={c.valeur}>
+                {c.label}
+              </option>
+            ))}
+          </select>
           <button
             className="bg-black text-white rounded px-4"
             onClick={ajouterDepense}
@@ -228,6 +274,11 @@ export default function PageCaisse() {
             Ajouter
           </button>
         </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Charge : loyer, transport, électricité, salaire... · Achat de
+          marchandises : réapprovisionnement du stock (non retranché du
+          bénéfice).
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -279,7 +330,15 @@ export default function PageCaisse() {
                 {d.libelle}{" "}
                 <span className="text-sm text-gray-500">
                   {heure(d.created_at)}
-                </span>
+                </span>{" "}
+                <button
+                  type="button"
+                  title="Cliquer pour changer le type"
+                  className={`text-xs rounded px-2 py-1 ${infoCategorie(d.categorie).badge}`}
+                  onClick={() => basculerCategorie(d)}
+                >
+                  {infoCategorie(d.categorie).label}
+                </button>
               </span>
               <span className="text-red-500 whitespace-nowrap">
                 − {format(d.montant)}

@@ -5,11 +5,16 @@ import { supabase } from "../../lib/supabase";
 import { envoyerParWhatsApp } from "../../lib/whatsapp";
 import { infoMode, type ModePaiement } from "../../lib/paiements";
 import CarteArticle from "../components/CarteArticle";
-import FormulaireArticle from "../components/FormulaireArticle";
 import Panier, { type LignePanier } from "../components/Panier";
 import type { DonneesFacture } from "../components/FactureDocument";
-
-type Article = { id: number; nom: string; prix: number; stock: number };
+import Link from "next/link";
+type Article = {
+  id: number;
+  nom: string;
+  prix: number;
+  prix_achat: number;
+  stock: number;
+};
 
 export default function PageVentes() {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -48,20 +53,6 @@ export default function PageVentes() {
     charger();
   }, []);
 
-  async function ajouterArticle(nom: string, prix: number) {
-    const { data, error } = await supabase
-      .from("articles")
-      .insert({ nom, prix, stock: 10 })
-      .select()
-      .single();
-
-    if (error) {
-      setErreurBase(error.message);
-      return;
-    }
-    setArticles([...articles, data]);
-  }
-
   function ajouterAuPanier(article: Article) {
     const existe = panier.find((l) => l.articleId === article.id);
     const dejaDansPanier = existe ? existe.quantite : 0;
@@ -91,7 +82,11 @@ export default function PageVentes() {
         },
       ]);
     }
-    setAlerte("");
+    setAlerte(
+      article.prix_achat > 0 && article.prix < article.prix_achat
+        ? `Attention : « ${article.nom} » se vend moins cher qu'il ne coûte (perte de ${article.prix_achat - article.prix} FCFA par unité).`
+        : "",
+    );
     setMessage("");
     setDerniereVente(null);
   }
@@ -130,7 +125,7 @@ export default function PageVentes() {
     const ids = panier.map((l) => l.articleId);
     const { data: stocksData, error: errStock } = await supabase
       .from("articles")
-      .select("id, nom, stock")
+      .select("id, nom, stock, prix_achat")
       .in("id", ids);
 
     if (errStock) {
@@ -176,6 +171,7 @@ export default function PageVentes() {
       article_nom: l.nom,
       prix: l.prix,
       quantite: l.quantite,
+      cout_unitaire: stocks.find((s) => s.id === l.articleId)?.prix_achat ?? 0,
     }));
     const { error: errLignes } = await supabase
       .from("lignes_vente")
@@ -277,8 +273,6 @@ export default function PageVentes() {
 
   return (
     <main className="p-4 md:p-8">
-      <FormulaireArticle onAjouter={ajouterArticle} />
-
       {message && (
         <div className="mb-4 flex flex-wrap items-center gap-4">
           <p className="text-green-600 font-bold">{message}</p>
@@ -309,6 +303,21 @@ export default function PageVentes() {
       {erreurBase && <p className="text-red-500 mb-4">Erreur : {erreurBase}</p>}
       {chargement && (
         <p className="text-gray-500 mb-4">Chargement des articles...</p>
+      )}
+      {!chargement && articles.length === 0 && (
+        <div className="card mb-4 text-center">
+          <p className="font-medium">Aucun article en vente.</p>
+          <p className="text-sm text-gray-500 mb-3">
+            Ajoute tes articles dans la page Articles, avec leur prix dachat et
+            leur stock.
+          </p>
+          <Link
+            href="/articles"
+            className="bg-black text-white rounded px-4 py-2 text-sm inline-block"
+          >
+            Aller aux articles
+          </Link>
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

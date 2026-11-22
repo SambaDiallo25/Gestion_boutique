@@ -13,7 +13,12 @@ import {
 } from "recharts";
 import { supabase } from "../lib/supabase";
 
-type LigneVente = { article_nom: string; quantite: number; prix: number };
+type LigneVente = {
+  article_nom: string;
+  quantite: number;
+  prix: number;
+  cout_unitaire: number;
+};
 type Vente = {
   id: number;
   total: number;
@@ -61,7 +66,7 @@ export default function Accueil() {
         supabase
           .from("ventes")
           .select(
-            "id, total, created_at, lignes_vente(article_nom, quantite, prix)",
+            "id, total, created_at, lignes_vente(article_nom, quantite, prix, cout_unitaire)",
           )
           .gte("created_at", debutIso),
         supabase
@@ -118,6 +123,9 @@ export default function Accueil() {
 
   const ventesJour = ventes.filter((v) => cleJour(v.created_at) === aujourdhui);
   const caJour = ventesJour.reduce((somme, v) => somme + v.total, 0);
+  const margeJour = ventesJour
+    .flatMap((v) => v.lignes_vente)
+    .reduce((somme, l) => somme + (l.prix - l.cout_unitaire) * l.quantite, 0);
   const caHier = jours[5].total;
   const encaisseJour = paiements
     .filter((p) => cleJour(p.created_at) === aujourdhui)
@@ -175,6 +183,9 @@ export default function Accueil() {
           </p>
           <p className="text-xs text-gray-500">
             {ventesJour.length} vente(s) · Hier : {format(caHier)}
+          </p>
+          <p className="text-xs font-medium text-emerald-600">
+            Marge du jour : {format(margeJour)}
           </p>
         </div>
         <div className="card">

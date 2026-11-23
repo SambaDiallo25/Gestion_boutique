@@ -6,11 +6,19 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 import Navbar from "./Navbar";
 
+const PAGES_PUBLIQUES = [
+  "/connexion",
+  "/mot-de-passe-oublie",
+  "/nouveau-mot-de-passe",
+];
+
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<Session | null>(null);
   const [pret, setPret] = useState(false);
+
+  const estPublique = PAGES_PUBLIQUES.includes(pathname);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -28,13 +36,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (pret && !session && pathname !== "/connexion") {
+    if (pret && !session && !estPublique) {
       router.replace("/connexion");
     }
-  }, [pret, session, pathname, router]);
+  }, [pret, session, estPublique, router]);
 
-  if (!pret) return <p className="p-4 md:p-8 text-slate-500">Chargement...</p>;
-  if (pathname === "/connexion") return <>{children}</>;
+  if (!pret) return <p className="p-8 text-slate-500">Chargement...</p>;
+  if (estPublique) return <>{children}</>;
   if (!session) return null;
 
   return (
